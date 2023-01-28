@@ -25,13 +25,22 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn build(args: &[String]) -> Result<Config, &'static str> {
-        if args.len() < 3 {
-            return Err("Not enough arguments");
-        }
-        let needle = args[1].clone();
-        let haystack = args[2].clone();
+    pub fn build(mut args: impl Iterator<Item = String>) -> Result<Config, &'static str> {
+        // skip irrelevant first element
+        args.next();
+
+        let needle = match args.next() {
+            Some(arg) => arg,
+            None => return Err("No query"),
+        };
+
+        let haystack = match args.next() {
+            Some(arg) => arg,
+            None => return Err("No file"),
+        };
+
         let ignore_case = env::var("IGNORE_CASE").is_ok();
+
         Ok(Config {
             needle,
             haystack,
@@ -41,26 +50,19 @@ impl Config {
 }
 
 pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
-    let mut result = Vec::new();
-    for line in contents.lines() {
-        if line.contains(query) {
-            result.push(line)
-        }
-    }
-
-    result
+    contents
+        .lines()
+        .filter(|line| line.contains(query))
+        .collect()
 }
 
 pub fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
     let query = query.to_lowercase();
-    let mut result = Vec::new();
-    for line in contents.lines() {
-        if line.to_lowercase().contains(&query) {
-            result.push(line)
-        }
-    }
 
-    result
+    contents
+        .lines()
+        .filter(|line| line.to_lowercase().contains(&query))
+        .collect()
 }
 
 #[cfg(test)]
